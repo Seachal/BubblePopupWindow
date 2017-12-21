@@ -8,7 +8,7 @@
     android:background="@android:color/transparent"
     app:cornerRadius="50"
     app:halfBaseOfLeg="8dp"
-    app:triangleSideLength="20dp"
+    app:triangleSideLength="15dp"
     app:padding="18dp"
     app:shadowColor="#64000000"
     app:strokeWidth="5">
