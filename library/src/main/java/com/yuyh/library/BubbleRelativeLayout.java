@@ -5,7 +5,6 @@ import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.CornerPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
@@ -32,11 +31,13 @@ public class BubbleRelativeLayout extends RelativeLayout {
         TOP, LEFT, RIGHT, BOTTOM, NONE
     }
 
-    public static int PADDING = 30;
-    public static int LEG_HALF_BASE = 30;
-    public static float STROKE_WIDTH = 2.0f;
-    public static float CORNER_RADIUS = 8.0f;
+    public static int PADDING = 30;  //填充
+    public static int TRIANG_SIDE_LENGTH = 50;  //等腰三角形的腰长
+    public static int LEG_HALF_BASE = 30;    // 三角形的偏移量
+    public static float STROKE_WIDTH = 8.0f;
+    public static float CORNER_RADIUS = 28.0f;
     public static int SHADOW_COLOR = Color.argb(100, 0, 0, 0);
+    /**/
     public static float MIN_LEG_DISTANCE = PADDING + LEG_HALF_BASE;
 
     private Paint mFillPaint = null;
@@ -68,15 +69,16 @@ public class BubbleRelativeLayout extends RelativeLayout {
         setLayoutParams(params);
 
         if (attrs != null) {
-            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.bubble);
+            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.bubblePopupWindowLayout);
 
             try {
-                PADDING = a.getDimensionPixelSize(R.styleable.bubble_padding, PADDING);
-                SHADOW_COLOR = a.getInt(R.styleable.bubble_shadowColor, SHADOW_COLOR);
-                LEG_HALF_BASE = a.getDimensionPixelSize(R.styleable.bubble_halfBaseOfLeg, LEG_HALF_BASE);
+                PADDING = a.getDimensionPixelSize(R.styleable.bubblePopupWindowLayout_padding, PADDING);
+                TRIANG_SIDE_LENGTH = a.getDimensionPixelSize(R.styleable.bubblePopupWindowLayout_triangleSideLength, TRIANG_SIDE_LENGTH);
+                SHADOW_COLOR = a.getInt(R.styleable.bubblePopupWindowLayout_shadowColor, SHADOW_COLOR);
+                LEG_HALF_BASE = a.getDimensionPixelSize(R.styleable.bubblePopupWindowLayout_halfBaseOfLeg, LEG_HALF_BASE);
                 MIN_LEG_DISTANCE = PADDING + LEG_HALF_BASE;
-                STROKE_WIDTH = a.getFloat(R.styleable.bubble_strokeWidth, STROKE_WIDTH);
-                CORNER_RADIUS = a.getFloat(R.styleable.bubble_cornerRadius, CORNER_RADIUS);
+                STROKE_WIDTH = a.getFloat(R.styleable.bubblePopupWindowLayout_strokeWidth, STROKE_WIDTH);
+                CORNER_RADIUS = a.getFloat(R.styleable.bubblePopupWindowLayout_cornerRadius, CORNER_RADIUS);
             } finally {
                 if (a != null) {
                     a.recycle();
@@ -90,7 +92,8 @@ public class BubbleRelativeLayout extends RelativeLayout {
         mPaint.setAntiAlias(true);
         mPaint.setStrokeWidth(STROKE_WIDTH);
         mPaint.setStrokeJoin(Paint.Join.MITER);
-        mPaint.setPathEffect(new CornerPathEffect(CORNER_RADIUS));
+        //注释掉，影响圆角对称
+        //mPaint.setPathEffect(new CornerPathEffect(CORNER_RADIUS));
 
         if (Build.VERSION.SDK_INT >= 11) {
             setLayerType(LAYER_TYPE_SOFTWARE, mPaint);
@@ -103,7 +106,8 @@ public class BubbleRelativeLayout extends RelativeLayout {
         if (Build.VERSION.SDK_INT >= 11) {
             setLayerType(LAYER_TYPE_SOFTWARE, mFillPaint);
         }
-        mPaint.setShadowLayer(2f, 2F, 5F, SHADOW_COLOR);
+        /*设置阴影*/
+        // mPaint.setShadowLayer(2f, 2F, 5F, SHADOW_COLOR);
 
         renderBubbleLegPrototype();
 
@@ -120,25 +124,38 @@ public class BubbleRelativeLayout extends RelativeLayout {
      * 尖角path
      */
     private void renderBubbleLegPrototype() {
+        /**
+         * 画一个等腰三角形， 因为y轴从0开始向负方向画线，看不到这条线，会被隐藏一半， 所以看到的事一个直角三角形
+         *
+         *
+         */
         mBubbleLegPrototype.moveTo(0, 0);
-        mBubbleLegPrototype.lineTo(PADDING * 1.5f, -PADDING / 1.5f);
-        mBubbleLegPrototype.lineTo(PADDING * 1.5f, PADDING / 1.5f);
-        mBubbleLegPrototype.close();
+        mBubbleLegPrototype.lineTo(TRIANG_SIDE_LENGTH * 1.5f, -TRIANG_SIDE_LENGTH / 1.5f); //向负方向画路径，目前会被被隐藏
+        mBubbleLegPrototype.lineTo(TRIANG_SIDE_LENGTH * 1.5f, TRIANG_SIDE_LENGTH / 1.5f);
+        mBubbleLegPrototype.close();//封闭路径
+
     }
 
+    /**
+     * 设置尖角方向和 偏移量
+     *
+     * @param bubbleOrientation
+     * @param bubbleOffset
+     */
     public void setBubbleParams(final BubbleLegOrientation bubbleOrientation, final float bubbleOffset) {
         mBubbleLegOffset = bubbleOffset;
         mBubbleOrientation = bubbleOrientation;
     }
 
     /**
-     * 根据显示方向，获取尖角位置矩阵
+     * 根据显示方向，获取尖角位置矩阵（主要用于处理尖角，尖角的方向）
+     *
      * @param width
      * @param height
      * @return
      */
     private Matrix renderBubbleLegMatrix(final float width, final float height) {
-
+        //偏移量
         final float offset = Math.max(mBubbleLegOffset, MIN_LEG_DISTANCE);
 
         float dstX = 0;
@@ -148,9 +165,10 @@ public class BubbleRelativeLayout extends RelativeLayout {
         switch (mBubbleOrientation) {
 
             case TOP:
+                //水平方向移动
                 dstX = Math.min(offset, width - MIN_LEG_DISTANCE);
                 dstY = 0;
-                matrix.postRotate(90);
+                matrix.postRotate(90);  // 旋转90
                 break;
 
             case RIGHT:
@@ -164,10 +182,11 @@ public class BubbleRelativeLayout extends RelativeLayout {
                 dstY = height;
                 matrix.postRotate(270);
                 break;
-
+            default:
+                break;
         }
 
-        matrix.postTranslate(dstX, dstY);
+        matrix.postTranslate(dstX, dstY); //移动
         return matrix;
     }
 
@@ -181,9 +200,14 @@ public class BubbleRelativeLayout extends RelativeLayout {
         mPath.addRoundRect(new RectF(PADDING, PADDING, width - PADDING, height - PADDING), CORNER_RADIUS, CORNER_RADIUS, Direction.CW);
         mPath.addPath(mBubbleLegPrototype, renderBubbleLegMatrix(width, height));
 
+        //画一个灰色背景的图形
         canvas.drawPath(mPath, mPaint);
-        canvas.scale((width - STROKE_WIDTH) / width, (height - STROKE_WIDTH) / height, width / 2f, height / 2f);
 
+        /**
+         * 缩小画布后再画一个白色背景的图形，这样就形成了一个有灰边，白色填充的不规则气泡图形。
+         */
+        //把画布缩小：以中心点为轴进行缩小。
+        canvas.scale((width - STROKE_WIDTH) / width, (height - STROKE_WIDTH) / height, width / 2f, height / 2f);
         canvas.drawPath(mPath, mFillPaint);
     }
 }
